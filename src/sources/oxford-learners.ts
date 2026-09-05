@@ -177,10 +177,10 @@ function unavailable(reason: "network" | "blocked" | "format-changed", message: 
 export function createOxfordLearnersSource(http: Pick<HttpClient, "fetchText"> = httpClient): DictionarySource {
   const entryUrl = (word: string) => `${ENTRY_PATH}${entrySlug(word)}`;
 
-  // Accepted limitation: a homograph page that fails is left out silently; Refresh Entry fetches it again.
-  async function fetchPage(url: string, options: LookupOptions): Promise<ParsedPage | undefined> {
+  // Accepted limitation: a homograph page that fails is left out silently, and the shorter entry stays cached until the command is relaunched.
+  async function fetchPage(url: string): Promise<ParsedPage | undefined> {
     try {
-      const response = await http.fetchText(url, { signal: options.signal });
+      const response = await http.fetchText(url);
       if (response.status !== 200) return undefined;
       return parsePage(cheerio.load(response.body), response.url);
     } catch {
@@ -188,10 +188,10 @@ export function createOxfordLearnersSource(http: Pick<HttpClient, "fetchText"> =
     }
   }
 
-  async function lookup(word: string, options: LookupOptions): Promise<LookupResult> {
+  async function lookup(word: string): Promise<LookupResult> {
     let response;
     try {
-      response = await http.fetchText(entryUrl(word), { signal: options.signal });
+      response = await http.fetchText(entryUrl(word));
     } catch (error) {
       if (error instanceof NetworkError) return unavailable("network", error.message);
       throw error;
@@ -211,7 +211,7 @@ export function createOxfordLearnersSource(http: Pick<HttpClient, "fetchText"> =
     const otherPages = await Promise.all(
       homographUrls($, response.url)
         .slice(0, MAX_HOMOGRAPH_PAGES - 1)
-        .map((url) => fetchPage(url, options)),
+        .map((url) => fetchPage(url)),
     );
     const sections = [first, ...otherPages].flatMap((page) => page?.sections ?? []);
     return {

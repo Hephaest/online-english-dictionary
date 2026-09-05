@@ -303,7 +303,7 @@ export function createMerriamWebsterSource(http: Pick<HttpClient, "fetchText"> =
 
     let response;
     try {
-      response = await http.fetchText(apiUrl(word, credentials), { signal: options.signal });
+      response = await http.fetchText(apiUrl(word, credentials));
     } catch (error) {
       // The request URL carries the key, so nothing derived from it may reach a user-visible message.
       if (error instanceof NetworkError) {

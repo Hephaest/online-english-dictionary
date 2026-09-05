@@ -9,10 +9,6 @@ export const USER_AGENT = "OnlineEnglishDictionary/1.0";
 /** Owner-set constant: a hung page must not leave the list loading forever. */
 export const REQUEST_TIMEOUT_MS = 10_000;
 
-export interface HttpOptions {
-  signal?: AbortSignal;
-}
-
 export interface TextResponse {
   status: number;
   /** Final URL after redirects; sources such as Cambridge redirect a miss to their index page. */
@@ -39,7 +35,7 @@ export function redactUrl(url: string): string {
   }
 }
 
-/** The request never produced a complete response: DNS, reset socket, timeout, or an abort from the caller. */
+/** The request never produced a complete response: DNS, reset socket, or the timeout. */
 export class NetworkError extends Error {
   readonly timedOut: boolean;
 
@@ -59,14 +55,9 @@ export class NetworkError extends Error {
 }
 
 export type HttpClient = {
-  fetchText(url: string, options?: HttpOptions): Promise<TextResponse>;
-  fetchBytes(url: string, options?: HttpOptions): Promise<BytesResponse>;
+  fetchText(url: string): Promise<TextResponse>;
+  fetchBytes(url: string): Promise<BytesResponse>;
 };
-
-function requestSignal(options: HttpOptions): AbortSignal {
-  const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
-  return options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
-}
 
 interface Completed<Payload> {
   status: number;
@@ -75,17 +66,19 @@ interface Completed<Payload> {
   payload: Payload;
 }
 
-/** Fetches and reads the whole body inside one guard, so a timeout during the body read is a NetworkError too. */
+/**
+ * Fetches and reads the whole body inside one guard, so a timeout during the body read is a NetworkError too.
+ * The timeout is the only way a request ends early: a request that nobody awaits any more still completes and can be cached.
+ */
 async function request<Payload>(
   url: string,
-  options: HttpOptions,
   accept: string,
   read: (response: Response) => Promise<Payload>,
 ): Promise<Completed<Payload>> {
   try {
     const response = await fetch(url, {
       headers: { "User-Agent": USER_AGENT, Accept: accept },
-      signal: requestSignal(options),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       redirect: "follow",
     });
     const payload = await read(response);
@@ -100,17 +93,15 @@ async function request<Payload>(
   }
 }
 
-export async function fetchText(url: string, options: HttpOptions = {}): Promise<TextResponse> {
-  const { payload, ...rest } = await request(url, options, "text/html,application/json;q=0.9,*/*;q=0.8", (response) =>
+export async function fetchText(url: string): Promise<TextResponse> {
+  const { payload, ...rest } = await request(url, "text/html,application/json;q=0.9,*/*;q=0.8", (response) =>
     response.text(),
   );
   return { ...rest, body: payload };
 }
 
-export async function fetchBytes(url: string, options: HttpOptions = {}): Promise<BytesResponse> {
-  const { payload, ...rest } = await request(url, options, "*/*", async (response) =>
-    Buffer.from(await response.arrayBuffer()),
-  );
+export async function fetchBytes(url: string): Promise<BytesResponse> {
+  const { payload, ...rest } = await request(url, "*/*", async (response) => Buffer.from(await response.arrayBuffer()));
   return { ...rest, bytes: payload };
 }
 

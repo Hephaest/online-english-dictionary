@@ -2,7 +2,7 @@ import { z } from "zod";
 import { httpClient, NetworkError } from "../http/client";
 import type { HttpClient } from "../http/client";
 import type { EntrySection, LookupResult, Pronunciation, Sense } from "../model/entry";
-import type { DictionarySource, LookupOptions } from "./types";
+import type { DictionarySource } from "./types";
 
 const SITE_BASE = "https://www.urbandictionary.com";
 const API_BASE = "https://api.urbandictionary.com/v0";
@@ -97,10 +97,10 @@ function unavailable(reason: "network" | "blocked" | "format-changed", message: 
 export function createUrbanDictionarySource(http: Pick<HttpClient, "fetchText"> = httpClient): DictionarySource {
   const entryUrl = (word: string) => `${SITE_BASE}/define.php?term=${encodeURIComponent(searchTerm(word))}`;
 
-  async function suggestionsFor(word: string, options: LookupOptions): Promise<string[]> {
+  async function suggestionsFor(word: string): Promise<string[]> {
     try {
       const url = `${API_BASE}/autocomplete?term=${encodeURIComponent(searchTerm(word))}`;
-      const response = await http.fetchText(url, { signal: options.signal });
+      const response = await http.fetchText(url);
       if (response.status !== 200) return [];
       return parseJson(autocompleteSchema, response.body) ?? [];
     } catch {
@@ -108,12 +108,12 @@ export function createUrbanDictionarySource(http: Pick<HttpClient, "fetchText"> 
     }
   }
 
-  async function lookup(word: string, options: LookupOptions): Promise<LookupResult> {
+  async function lookup(word: string): Promise<LookupResult> {
     let response;
     try {
       // TODO(urban-paging): v0/define answers with the first ten definitions only; paging through &page=N is deferred.
       const url = `${API_BASE}/define?term=${encodeURIComponent(searchTerm(word))}`;
-      response = await http.fetchText(url, { signal: options.signal });
+      response = await http.fetchText(url);
     } catch (error) {
       if (error instanceof NetworkError) return unavailable("network", error.message);
       throw error;
@@ -125,7 +125,7 @@ export function createUrbanDictionarySource(http: Pick<HttpClient, "fetchText"> 
 
     const payload = parseJson(defineSchema, response.body);
     if (!payload) return unavailable("format-changed", "The entry loaded but could not be read.");
-    if (payload.length === 0) return { status: "not-found", suggestions: await suggestionsFor(word, options) };
+    if (payload.length === 0) return { status: "not-found", suggestions: await suggestionsFor(word) };
 
     // The stored headword carries the site's own casing, which the permalink also uses.
     const headword = payload[0].word;

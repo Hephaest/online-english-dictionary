@@ -16,8 +16,12 @@ export function lookupKey(sourceId: SourceId, word: string): LookupKey {
 }
 
 export interface LookupRunner {
+  /**
+   * A started lookup runs to completion and fills the cache; a caller that loses interest stops awaiting.
+   * The runner never takes a caller's AbortSignal: callers that join one in-flight request would inherit each other's aborts.
+   */
   lookup(source: DictionarySource, word: string, options: LookupOptions): Promise<LookupResult>;
-  /** Drops one cached result so the next lookup refetches. */
+  /** Drops one cached result. A request already in flight is joined rather than restarted, so Retry during a load does not duplicate it. */
   forget(sourceId: SourceId, word: string): void;
 }
 
@@ -34,7 +38,7 @@ export function createLookupRunner(): LookupRunner {
     const request = source
       .lookup(normalizeWord(word), options)
       .then((result) => {
-        // Failures are not cached so that Retry and source cycling always hit the network again.
+        // Failures are not cached, so Retry and source cycling reach the network again once the request has settled.
         if (result.status !== "unavailable") results.set(key, result);
         return result;
       })

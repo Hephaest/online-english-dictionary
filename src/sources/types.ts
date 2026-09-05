@@ -8,7 +8,6 @@ export interface MerriamWebsterCredentials {
 }
 
 export interface LookupOptions {
-  signal?: AbortSignal;
   merriamWebster?: MerriamWebsterCredentials;
 }
 

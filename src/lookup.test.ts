@@ -3,7 +3,8 @@ import { createLookupRunner, normalizeWord } from "./lookup";
 import type { LookupResult } from "./model/entry";
 import type { DictionarySource } from "./sources/types";
 
-function sourceReturning(results: LookupResult[]): { source: DictionarySource; calls: string[] } {
+/** A source that answers from the queue in order; an Error in the queue is thrown instead of returned. */
+function sourceReturning(results: Array<LookupResult | Error>): { source: DictionarySource; calls: string[] } {
   const calls: string[] = [];
   const queue = [...results];
   const source: DictionarySource = {
@@ -14,7 +15,9 @@ function sourceReturning(results: LookupResult[]): { source: DictionarySource; c
     entryUrl: (word) => `https://example.test/${word}`,
     async lookup(word) {
       calls.push(word);
-      return queue.shift() ?? { status: "not-found", suggestions: [] };
+      const next = queue.shift() ?? { status: "not-found", suggestions: [] };
+      if (next instanceof Error) throw next;
+      return next;
     },
   };
   return { source, calls };
@@ -58,6 +61,14 @@ describe("createLookupRunner", () => {
     const { source, calls } = sourceReturning([failure, found]);
     const runner = createLookupRunner();
     await expect(runner.lookup(source, "kitchen", {})).resolves.toEqual(failure);
+    await expect(runner.lookup(source, "kitchen", {})).resolves.toEqual(found);
+    expect(calls).toHaveLength(2);
+  });
+
+  it("should start a new request after the source throws instead of replaying the rejected one", async () => {
+    const { source, calls } = sourceReturning([new Error("the page could not be parsed"), found]);
+    const runner = createLookupRunner();
+    await expect(runner.lookup(source, "kitchen", {})).rejects.toThrow("the page could not be parsed");
     await expect(runner.lookup(source, "kitchen", {})).resolves.toEqual(found);
     expect(calls).toHaveLength(2);
   });

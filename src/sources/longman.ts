@@ -4,7 +4,7 @@ import type { Element } from "domhandler";
 import { httpClient, NetworkError } from "../http/client";
 import type { HttpClient } from "../http/client";
 import type { Badge, EntrySection, LookupResult, Picture, Pronunciation, Sense } from "../model/entry";
-import type { DictionarySource, LookupOptions } from "./types";
+import type { DictionarySource } from "./types";
 
 const BASE_URL = "https://www.ldoceonline.com";
 const ENTRY_PATH = `${BASE_URL}/dictionary/`;
@@ -246,10 +246,10 @@ function missResult($: CheerioAPI, url: string): LookupResult | undefined {
 export function createLongmanSource(http: Pick<HttpClient, "fetchText"> = httpClient): DictionarySource {
   const entryUrl = (word: string) => `${ENTRY_PATH}${entrySlug(word)}`;
 
-  async function lookup(word: string, options: LookupOptions): Promise<LookupResult> {
+  async function lookup(word: string): Promise<LookupResult> {
     let response;
     try {
-      response = await http.fetchText(entryUrl(word), { signal: options.signal });
+      response = await http.fetchText(entryUrl(word));
     } catch (error) {
       if (error instanceof NetworkError) return unavailable("network", error.message);
       throw error;
