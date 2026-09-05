@@ -11,8 +11,6 @@ import { rememberLookup } from "../recent";
 import { availableSources, findSource, neighborSource, resolveSource } from "../sources";
 import { longestWord } from "../text/words";
 import { EntryActions, RecoveryActions } from "./EntryActions";
-import { EntryMetadata } from "./EntryMetadata";
-import { FullEntry } from "./FullEntry";
 import { SourceDropdown } from "./SourceDropdown";
 import { lookupResultTitle } from "./states";
 
@@ -73,34 +71,36 @@ export function EntryScreen({ initialWord, initialSourceId, substitutedFrom, onL
   // The result belongs to the current request only once its source and word match; before that it is the previous entry.
   const current = resultSourceId === source.id && resultWord === normalizeWord(word);
   const found = result?.status === "found" ? result.entry : undefined;
+  // A miss or a failure for the current request; while it is undefined the previous entry, if any, stays on screen.
+  const problem = current && result && result.status !== "found" ? result : undefined;
   const shownSource = findSource(sources, resultSourceId) ?? source;
   const rows = found ? rowsOf(found) : [];
   const note = substitutionNote(word, substitution);
 
   // A phrase that misses is retried as its longest word, once, and the pane says so.
   useEffect(() => {
-    if (!current || result?.status !== "not-found" || !word.includes(" ") || substitution) return;
+    if (problem?.status !== "not-found" || !word.includes(" ") || substitution) return;
     const fallback = longestWord(word);
     if (fallback && fallback !== word) {
       setSubstitution(word);
       setWord(fallback);
     }
-  }, [current, result, word, substitution]);
+  }, [problem, word, substitution]);
 
   // On a new entry: remember it, then land on the row the reader was on, or the first row of the same part of speech.
   useEffect(() => {
     if (result?.status !== "found") return;
     const entry = result.entry;
-    const key = `${entry.source}:${entry.headword}`;
-    if (rememberedKey.current !== key) {
-      rememberedKey.current = key;
-      const first = entry.sections[0];
-      rememberLookup({
-        word: entry.headword,
-        source: entry.source,
-        partOfSpeech: first?.partOfSpeech,
-        gloss: first?.senses[0]?.definition,
-      }).then(() => onLookedUp?.());
+    // Remembers the term looked up, never entry.headword or its part of speech: an entry's
+    // content is the dictionary's own data, and API terms forbid keeping that on disk.
+    // The term is normally typed, but a Did You Mean click makes it a word the source suggested;
+    // a bare word is kept either way, unlike the definitions and examples around it.
+    if (resultWord) {
+      const key = `${entry.source}:${resultWord}`;
+      if (rememberedKey.current !== key) {
+        rememberedKey.current = key;
+        rememberLookup({ word: resultWord, source: entry.source }).then(() => onLookedUp?.());
+      }
     }
     const entryRows = rowsOf(entry);
     const previous = selectedRow.current;
@@ -110,21 +110,19 @@ export function EntryScreen({ initialWord, initialSourceId, substitutedFrom, onL
   }, [result]);
 
   useEffect(() => {
-    if (!current || result?.status !== "unavailable" || result.reason !== "network") return;
+    if (problem?.status !== "unavailable" || problem.reason !== "network") return;
     const next = neighborSource(sources, source.id, 1);
     showToast({
       style: Toast.Style.Failure,
-      title: lookupResultTitle(source, word, result),
-      message: result.message,
+      title: lookupResultTitle(source, word, problem),
+      message: problem.message,
       primaryAction: { title: "Retry", onAction: () => refresh() },
       secondaryAction:
         next.id === source.id
           ? undefined
           : { title: `Switch to ${next.shortTitle}`, onAction: () => switchSource(next.id) },
     });
-  }, [current, result]);
-
-  const showState = current && result && result.status !== "found";
+  }, [problem]);
 
   return (
     <List
@@ -149,38 +147,24 @@ export function EntryScreen({ initialWord, initialSourceId, substitutedFrom, onL
                 title={`${sense.number}. ${sense.heading ? `${sense.heading}: ` : ""}${sense.definition}`}
                 icon={pictureForSense(section, sense) ? Icon.Image : Icon.Text}
                 detail={
-                  <List.Item.Detail
-                    markdown={senseMarkdown(found, section, sense, { substitutionNote: note })}
-                    metadata={<EntryMetadata source={shownSource} entry={found} section={section} sense={sense} />}
-                  />
+                  <List.Item.Detail markdown={senseMarkdown(found, section, sense, { substitutionNote: note })} />
                 }
                 actions={
                   <EntryActions
                     source={shownSource}
-                    sources={sources}
                     entry={found}
                     section={section}
                     sense={sense}
                     preferences={preferences}
-                    onSwitchSource={switchSource}
-                    onRefresh={refresh}
-                    fullEntry={
-                      <FullEntry
-                        word={word}
-                        sourceId={shownSource.id}
-                        substitutionNote={note}
-                        onSwitchSource={switchSource}
-                      />
-                    }
                   />
                 }
               />
             ))}
           </List.Section>
         ))}
-      {showState && result.status === "not-found" && result.suggestions.length > 0 && (
-        <List.Section title="Did You Mean" subtitle={lookupResultTitle(source, word, result)}>
-          {result.suggestions.map((suggestion) => (
+      {problem?.status === "not-found" && problem.suggestions.length > 0 && (
+        <List.Section title="Did You Mean" subtitle={lookupResultTitle(source, word, problem)}>
+          {problem.suggestions.map((suggestion) => (
             <List.Item
               key={suggestion}
               title={suggestion}
@@ -195,23 +179,24 @@ export function EntryScreen({ initialWord, initialSourceId, substitutedFrom, onL
           ))}
         </List.Section>
       )}
-      {showState && (
+      {/* Raycast hides every empty view while isLoading is true, so the loading bar alone covers the first fetch. */}
+      {problem && (
         <List.EmptyView
-          icon={result.status === "not-found" ? Icon.MagnifyingGlass : Icon.ExclamationMark}
-          title={lookupResultTitle(source, word, result)}
-          description={result.status === "unavailable" ? result.message : "Try another dictionary with ⌘] or ⌘⇧D."}
+          icon={problem.status === "not-found" ? Icon.MagnifyingGlass : Icon.ExclamationMark}
+          title={lookupResultTitle(source, word, problem)}
+          description={problem.status === "unavailable" ? problem.message : "Try another dictionary with ⌘P."}
           actions={
             <RecoveryActions
               source={source}
-              sources={sources}
               word={word}
-              onSwitchSource={switchSource}
               onRefresh={refresh}
               showPreferences={
-                result.status === "unavailable" && (result.reason === "missing-key" || result.reason === "rejected-key")
+                problem.status === "unavailable" &&
+                (problem.reason === "missing-key" || problem.reason === "rejected-key")
               }
               browserFirst={
-                result.status === "not-found" || (result.status === "unavailable" && result.reason === "format-changed")
+                problem.status === "not-found" ||
+                (problem.status === "unavailable" && problem.reason === "format-changed")
               }
             />
           }

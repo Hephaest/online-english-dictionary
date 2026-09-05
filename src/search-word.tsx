@@ -1,6 +1,7 @@
 import { Action, ActionPanel, Icon, Keyboard, LaunchProps, List, useNavigation } from "@raycast/api";
 import { usePromise } from "@raycast/utils";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { sourceTag } from "./components/accessories";
 import { EntryScreen } from "./components/EntryScreen";
 import { SourceDropdown } from "./components/SourceDropdown";
 import { useActiveSource } from "./hooks/useActiveSource";
@@ -27,8 +28,8 @@ function LookupRow({ word, source, onLookedUp }: LookupRowProps) {
   return (
     <List.Item
       title={word}
-      subtitle={source.title}
       icon={Icon.Book}
+      accessories={[sourceTag(source)]}
       actions={
         <ActionPanel>
           <Action.Push
@@ -41,7 +42,6 @@ function LookupRow({ word, source, onLookedUp }: LookupRowProps) {
             url={source.entryUrl(word)}
             shortcut={Keyboard.Shortcut.Common.Open}
           />
-          <Action.CopyToClipboard title="Copy Word" content={word} shortcut={Keyboard.Shortcut.Common.CopyName} />
         </ActionPanel>
       }
     />
@@ -50,19 +50,17 @@ function LookupRow({ word, source, onLookedUp }: LookupRowProps) {
 
 interface RecentRowProps {
   item: RecentLookup;
-  sources: DictionarySource[];
+  source: DictionarySource;
   onLookedUp: () => void;
   onRemove: () => void;
 }
 
-function RecentRow({ item, sources, onLookedUp, onRemove }: RecentRowProps) {
-  const source = findSource(sources, item.source);
+function RecentRow({ item, source, onLookedUp, onRemove }: RecentRowProps) {
   return (
     <List.Item
       title={item.word}
-      subtitle={item.gloss}
       icon={Icon.Clock}
-      accessories={[{ text: item.partOfSpeech }, { text: source?.shortTitle ?? item.source }]}
+      accessories={[sourceTag(source)]}
       actions={
         <ActionPanel>
           <Action.Push
@@ -70,7 +68,6 @@ function RecentRow({ item, sources, onLookedUp, onRemove }: RecentRowProps) {
             icon={Icon.Book}
             target={<EntryScreen initialWord={item.word} initialSourceId={item.source} onLookedUp={onLookedUp} />}
           />
-          <Action.CopyToClipboard title="Copy Word" content={item.word} shortcut={Keyboard.Shortcut.Common.CopyName} />
           <Action
             title="Remove from Recent"
             icon={Icon.Trash}
@@ -103,6 +100,11 @@ export default function SearchWordCommand(props: LaunchProps<{ launchContext?: S
 
   const word = query.trim();
   const otherSources = sources.filter((source) => source.id !== activeSource.id);
+  // A word looked up in a dictionary that is hidden today (Merriam-Webster without its key) waits until that dictionary is back.
+  const openableRecent = (recent ?? []).flatMap((item) => {
+    const source = findSource(sources, item.source);
+    return source ? [{ item, source }] : [];
+  });
 
   return (
     <List
@@ -127,13 +129,13 @@ export default function SearchWordCommand(props: LaunchProps<{ launchContext?: S
           ))}
         </List.Section>
       )}
-      {recent && recent.length > 0 && (
+      {!word && openableRecent.length > 0 && (
         <List.Section title="Recent">
-          {recent.map((item) => (
+          {openableRecent.map(({ item, source }) => (
             <RecentRow
               key={`${item.source}:${item.word}`}
               item={item}
-              sources={sources}
+              source={source}
               onLookedUp={revalidate}
               onRemove={() => forgetLookup(item.word, item.source).then(revalidate)}
             />

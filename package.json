@@ -38,7 +38,7 @@
     {
       "name": "defaultSource",
       "title": "Default Dictionary",
-      "description": "The dictionary that opens first. Switch any time with ⌘P or ⌘⇧D.",
+      "description": "The dictionary that opens first. Switch any time with ⌘P.",
       "type": "dropdown",
       "required": false,
       "default": "cambridge",

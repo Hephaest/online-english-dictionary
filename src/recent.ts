@@ -1,21 +1,23 @@
 import { LocalStorage } from "@raycast/api";
 import { z } from "zod";
+import { SOURCE_IDS } from "./model/entry";
 import type { SourceId } from "./model/entry";
 
 /** Owner-set constant: rows shown under RECENT when the search bar is empty. */
 export const RECENT_LIMIT = 20;
 const STORAGE_KEY = "recent-lookups";
 
+/**
+ * Only what the reader typed, the dictionary they chose, and when.
+ * Nothing parsed out of a response is stored: dictionary API terms forbid keeping their data on disk.
+ */
 const recentLookupSchema = z.object({
   word: z.string().min(1),
-  source: z.enum(["cambridge", "longman", "oxford-learners", "merriam-webster", "urban"]),
-  partOfSpeech: z.string().optional(),
-  /** First sense, one line, so the row can carry a gloss without storing the entry. */
-  gloss: z.string().optional(),
+  source: z.enum(SOURCE_IDS),
   lookedUpAt: z.string(),
 });
 
-export type RecentLookup = z.infer<typeof recentLookupSchema> & { source: SourceId };
+export type RecentLookup = z.infer<typeof recentLookupSchema>;
 
 /** Rows that no longer match the stored shape are dropped rather than rendered with missing titles. */
 async function readAll(): Promise<RecentLookup[]> {

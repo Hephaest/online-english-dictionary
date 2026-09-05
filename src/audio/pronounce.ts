@@ -44,6 +44,6 @@ export async function pronounce(
   await showToast({
     style: Toast.Style.Failure,
     title: `No ${VARIANT_NAMES[variant]} recording in ${source.shortTitle}`,
-    message: "Switch dictionaries with ⌘] or turn on the macOS voice in the extension preferences.",
+    message: "Switch dictionaries with ⌘P or turn on the macOS voice in the extension preferences.",
   });
 }

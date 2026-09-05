@@ -13,7 +13,7 @@ export interface LookupOptions {
 
 export interface DictionarySource {
   id: SourceId;
-  /** Full name, for the dropdown and the metadata panel. */
+  /** Full name, for the dropdown and the source tag on the search rows. */
   title: string;
   /** Short name for action titles such as "Open in Cambridge". */
   shortTitle: string;

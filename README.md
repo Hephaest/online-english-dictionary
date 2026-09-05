@@ -6,7 +6,7 @@ Look up any English word in the dictionaries you trust, hear it said, and get ba
 
 ## What You Get
 
-- **Five dictionaries in one window.** Cambridge, Longman, Oxford Learner's, Merriam-Webster, and Urban Dictionary, switchable with one key.
+- **Five dictionaries in one window.** Cambridge, Longman, Oxford Learner's, Merriam-Webster, and Urban Dictionary, one ⌘P away from each other.
 - **Pronunciation on two keys.** Press Enter for the US recording and ⌘ Enter for the UK one, on every dictionary that has them.
 - **Meanings sorted by role.** Noun, verb, and every sense of a word sit in the left column; the full definition, examples, and the picture (when the dictionary has one) sit on the right.
 
@@ -14,7 +14,7 @@ Look up any English word in the dictionaries you trust, hear it said, and get ba
 
 | Command | What it does |
 |---|---|
-| Search Word | Type a word, pick a dictionary, open the entry. Your recent words wait below the search bar. |
+| Search Word | Type a word, pick a dictionary, open the entry. Your recent words, with their role and dictionary, show whenever the search bar is empty. |
 | Define Selected Word | Select a word in any app, run the command, and land on its entry. With nothing selected it uses the clipboard, but only when it holds a short phrase. |
 
 Tip: add Define Selected Word to a hotkey in Raycast Settings, and the whole loop becomes one keystroke.
@@ -37,14 +37,11 @@ Until a key is entered, Merriam-Webster simply stays out of the list.
 |---|---|
 | Play US pronunciation | Enter (or ⌘1) |
 | Play UK pronunciation | ⌘ Enter (or ⌘2) |
-| Next or previous dictionary | ⌘] and ⌘[ |
-| Switch Source… | ⌘⇧D |
-| Open Full Entry | ⌘⇧Enter |
-| Show Picture | ⌘⇧I |
-| Copy Definition, Copy Word, Copy IPA (Copy Pronunciation where a dictionary prints a respelling) | ⌘⇧C, ⌘⇧., ⌘⇧T |
-| Copy Entry as Markdown | ⌘⇧M |
+| Switch dictionary | ⌘P |
 | Open in the dictionary's website | ⌘O |
-| Refresh Entry | ⌘R |
+| Copy Definition | ⌘⇧C |
+| Show Picture (when the dictionary has one) | ⌘⇧I |
+| Remove a word from Recent | ⌃X |
 
 ## Fair Use
 

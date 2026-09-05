@@ -4,7 +4,7 @@ import type { Element } from "domhandler";
 import { httpClient, NetworkError } from "../http/client";
 import type { HttpClient } from "../http/client";
 import type { Badge, EntrySection, LookupResult, Picture, Pronunciation, Sense } from "../model/entry";
-import type { DictionarySource, LookupOptions } from "./types";
+import type { DictionarySource } from "./types";
 
 const BASE_URL = "https://www.oxfordlearnersdictionaries.com";
 const ENTRY_PATH = `${BASE_URL}/definition/english/`;

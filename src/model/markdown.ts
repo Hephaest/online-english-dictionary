@@ -27,13 +27,14 @@ export function pronunciationLine(section: EntrySection): string {
   return parts.filter(Boolean).join(" · ");
 }
 
-function pictureMarkdown(sense: Sense, section: EntrySection, sizeHints = true): string[] {
+function pictureMarkdown(sense: Sense, section: EntrySection): string[] {
   const picture = pictureForSense(section, sense);
   if (!picture) return [];
   const url = picture.fullUrl ?? picture.thumbUrl;
   const separator = url.includes("?") ? "&" : "?";
-  const sized = sizeHints ? `${url}${separator}raycast-width=${PICTURE_WIDTH}` : url;
-  const lines = [`![${escapeMarkdown(picture.caption ?? section.title)}](${sized})`];
+  const lines = [
+    `![${escapeMarkdown(picture.caption ?? section.title)}](${url}${separator}raycast-width=${PICTURE_WIDTH})`,
+  ];
   if (picture.caption) lines.push(`*${escapeMarkdown(picture.caption)}*`);
   if (picture.credit) lines.push(`*Photo: ${escapeMarkdown(picture.credit)}*`);
   return lines;
@@ -74,55 +75,9 @@ export function senseMarkdown(
   return lines.join("\n").trimEnd();
 }
 
-/** Markdown for the full-width reading page: every section and sense. */
-export function entryMarkdown(
-  entry: Entry,
-  options: { substitutionNote?: string; forClipboard?: boolean } = {},
-): string {
-  const sizeHints = !options.forClipboard;
-  const lines: string[] = [`# ${escapeMarkdown(entry.headword)}`, ""];
-  if (options.substitutionNote) lines.push(`*${escapeMarkdown(options.substitutionNote)}*`, "");
-  for (const section of entry.sections) {
-    lines.push(`## ${escapeMarkdown(section.title)}`, "");
-    const pronunciation = pronunciationLine(section);
-    if (pronunciation) lines.push(pronunciation, "");
-    if (section.badges.length > 0)
-      lines.push(section.badges.map((badge) => escapeMarkdown(badge.text)).join(" · "), "");
-    if (section.picture && section.senses[0]) {
-      lines.push(...pictureMarkdown({ ...section.senses[0], picture: undefined }, section, sizeHints), "");
-    }
-    for (const sense of section.senses) {
-      lines.push(senseHeading(sense), "");
-      if (sense.picture) lines.push(...pictureMarkdown(sense, { ...section, picture: undefined }, sizeHints), "");
-      const examples = exampleLines(sense);
-      if (examples.length > 0) lines.push(...examples, "");
-      if (sense.note) lines.push(`*${escapeMarkdown(sense.note)}*`, "");
-    }
-  }
-  return lines.join("\n").trimEnd();
-}
-
 /** Plain text for the clipboard: definition and examples of one sense. */
 export function senseClipboardText(entry: Entry, section: EntrySection, sense: Sense): string {
   const heading = [entry.headword, section.partOfSpeech].filter(Boolean).join(" · ");
   const examples = sense.examples.map((example) => `  - ${example}`);
   return [heading, sense.definition, ...examples].join("\n");
-}
-
-/** Plain text for the clipboard: every definition of the entry, grouped by section. */
-export function entryClipboardText(entry: Entry): string {
-  const lines: string[] = [entry.headword];
-  for (const section of entry.sections) {
-    lines.push("", section.title);
-    for (const sense of section.senses) lines.push(`${sense.number}. ${sense.definition}`);
-  }
-  return lines.join("\n");
-}
-
-/** One line per transcription, for the Copy IPA action; empty when the source prints none. */
-export function pronunciationClipboardText(section: EntrySection): string {
-  return section.pronunciations
-    .filter((pronunciation) => pronunciation.text)
-    .map((pronunciation) => `${pronunciation.variant.toUpperCase()} ${pronunciationText(pronunciation)}`)
-    .join("\n");
 }

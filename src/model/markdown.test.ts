@@ -1,13 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Entry, EntrySection } from "./entry";
-import {
-  entryClipboardText,
-  entryMarkdown,
-  pronunciationClipboardText,
-  pronunciationLine,
-  senseClipboardText,
-  senseMarkdown,
-} from "./markdown";
+import { pronunciationLine, senseClipboardText, senseMarkdown } from "./markdown";
 
 const section: EntrySection = {
   id: "kitchen-1",
@@ -92,43 +85,10 @@ describe("senseMarkdown", () => {
   });
 });
 
-describe("entryMarkdown", () => {
-  it("should render one heading per section with every sense and the picture above them", () => {
-    const withSectionPicture: Entry = {
-      ...entry,
-      sections: [
-        { ...section, picture: { thumbUrl: "https://example.test/section.png", caption: "a fitted kitchen" } },
-      ],
-    };
-    const markdown = entryMarkdown(withSectionPicture);
-    const lines = markdown.split("\n");
-    expect(lines[0]).toBe("# kitchen");
-    expect(markdown).toContain("## noun");
-    expect(lines.indexOf("![a fitted kitchen](https://example.test/section.png?raycast-width=340)")).toBeLessThan(
-      lines.findIndex((line) => line.includes("**1.**")),
-    );
-    expect(markdown).toContain("**2.** the staff who work in a kitchen");
-  });
-});
-
 describe("senseClipboardText", () => {
   it("should give the headword, the definition, and indented examples as plain text", () => {
     expect(senseClipboardText(entry, section, section.senses[0])).toBe(
       "kitchen · noun\na room in which meals are cooked or prepared\n  - We ate at the kitchen table.\n  - a fully fitted kitchen",
     );
-  });
-});
-
-describe("entryClipboardText", () => {
-  it("should list every numbered definition under its section title", () => {
-    expect(entryClipboardText(entry)).toBe(
-      "kitchen\n\nnoun\n1. a room in which meals are cooked or prepared\n2. the staff who work in a kitchen",
-    );
-  });
-});
-
-describe("pronunciationClipboardText", () => {
-  it("should list each transcription with its variant and keep the respelling notation", () => {
-    expect(pronunciationClipboardText(respelled)).toBe("US \\ˈki-chən\\");
   });
 });
