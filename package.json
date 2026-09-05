@@ -1,0 +1,128 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "online-english-dictionary",
+  "title": "Online English Dictionary",
+  "description": "Look up English words in Cambridge, Longman, Oxford Learner's, Merriam-Webster, and Urban Dictionary, with US and UK pronunciation.",
+  "icon": "icon.png",
+  "author": "Hephaest",
+  "platforms": [
+    "macOS"
+  ],
+  "categories": [
+    "Productivity",
+    "Web"
+  ],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "search-word",
+      "title": "Search Word",
+      "description": "Search a word in the dictionaries you trust and open its entry",
+      "mode": "view",
+      "keywords": [
+        "dictionary",
+        "define",
+        "meaning",
+        "pronunciation",
+        "vocabulary"
+      ]
+    },
+    {
+      "name": "define-selected-word",
+      "title": "Define Selected Word",
+      "description": "Open the dictionary entry for the text selected in the frontmost app",
+      "mode": "no-view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "defaultSource",
+      "title": "Default Dictionary",
+      "description": "The dictionary that opens first. Switch any time with ⌘P or ⌘⇧D.",
+      "type": "dropdown",
+      "required": false,
+      "default": "cambridge",
+      "data": [
+        {
+          "title": "Cambridge Dictionary",
+          "value": "cambridge"
+        },
+        {
+          "title": "Longman Dictionary",
+          "value": "longman"
+        },
+        {
+          "title": "Oxford Learner's Dictionaries",
+          "value": "oxford-learners"
+        },
+        {
+          "title": "Merriam-Webster",
+          "value": "merriam-webster"
+        },
+        {
+          "title": "Urban Dictionary",
+          "value": "urban"
+        }
+      ]
+    },
+    {
+      "name": "merriamWebsterApiKey",
+      "title": "Merriam-Webster API Key",
+      "description": "Free key from dictionaryapi.com. Leave empty to hide Merriam-Webster.",
+      "type": "password",
+      "required": false,
+      "placeholder": "Paste your key"
+    },
+    {
+      "name": "merriamWebsterDictionary",
+      "title": "Merriam-Webster Dictionary",
+      "description": "The reference your key is subscribed to.",
+      "type": "dropdown",
+      "required": false,
+      "default": "learners",
+      "data": [
+        {
+          "title": "Learner's Dictionary",
+          "value": "learners"
+        },
+        {
+          "title": "Collegiate Dictionary",
+          "value": "collegiate"
+        }
+      ]
+    },
+    {
+      "name": "speakWhenNoRecording",
+      "title": "Pronunciation",
+      "label": "Use the macOS voice when a dictionary has no recording",
+      "description": "Speaks the word with the system voice instead of staying silent.",
+      "type": "checkbox",
+      "required": false,
+      "default": false
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^2.2.0",
+    "@raycast/utils": "^2.3.1",
+    "cheerio": "^1.2.0",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^2.2.0",
+    "@types/node": "22.19.17",
+    "@types/react": "19.0.10",
+    "eslint": "^9.39.2",
+    "prettier": "^3.9.6",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.0"
+  },
+  "scripts": {
+    "build": "ray build -e dist",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint",
+    "publish": "npx @raycast/api@latest publish",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  }
+}
