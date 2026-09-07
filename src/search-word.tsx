@@ -1,4 +1,14 @@
-import { Action, ActionPanel, Icon, Keyboard, LaunchProps, List, useNavigation } from "@raycast/api";
+import {
+  Action,
+  ActionPanel,
+  closeMainWindow,
+  Icon,
+  Keyboard,
+  LaunchProps,
+  List,
+  PopToRootType,
+  useNavigation,
+} from "@raycast/api";
 import { usePromise } from "@raycast/utils";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sourceTag } from "./components/accessories";
@@ -90,12 +100,15 @@ export default function SearchWordCommand(props: LaunchProps<{ launchContext?: S
   const { data: recent, isLoading, revalidate } = usePromise(listRecent, []);
   const launched = useRef(false);
 
-  // Define Selected Word lands straight on the entry; the list stays underneath for Escape.
+  // Define Selected Word lands straight on the entry; Escape there closes Raycast instead of revealing this list.
   useEffect(() => {
     const context = props.launchContext;
     if (!context?.word || launched.current) return;
     launched.current = true;
-    push(<EntryScreen initialWord={context.word} substitutedFrom={context.substitutedFrom} onLookedUp={revalidate} />);
+    push(
+      <EntryScreen initialWord={context.word} substitutedFrom={context.substitutedFrom} onLookedUp={revalidate} />,
+      () => void closeMainWindow({ popToRootType: PopToRootType.Immediate }),
+    );
   }, [props.launchContext, push, revalidate]);
 
   const word = query.trim();
