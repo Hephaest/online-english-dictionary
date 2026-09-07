@@ -11,6 +11,6 @@ Raycast's Window Capture produces the 2000x1250 PNGs the store expects. Screensh
 | 1 | Search Word with the Look Up and Also In sections | Run Search Word, type `serendipity` |
 | 2 | Entry screen with a picture | Open `kitchen` in Oxford Learner's, select sense 1 |
 | 3 | Entry screen with the action panel open on the pronunciation actions | Open `serendipity` in Cambridge, press ⌘K |
-| 4 | Recent words with their role and dictionary tags | Run Search Word after a few lookups and leave the search bar empty |
+| 4 | Recent words with their dictionary tags | Run Search Word after a few lookups and leave the search bar empty |
 
-Keep one background across all four, no dark and light mix, and no other apps in frame. Then add the first image to the README where the TODO(screenshots) marker sits.
+Keep one background across all four, no dark and light mix, and no other apps in frame.
