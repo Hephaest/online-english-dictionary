@@ -281,25 +281,9 @@ describe("createCollinsSource", () => {
       expect(result.message).not.toContain("subscribed");
     });
 
-    // The host turns requests away in bursts that clear within a second, so one retry rescues most lookups.
-    it("should retry once and succeed when the host turns the first request away", async () => {
-      const challenge: Route = { status: 403, body: CHALLENGE_PAGE, contentType: "text/html; charset=UTF-8" };
-      let served = 0;
-      const http = {
-        calls: [] as Array<{ url: string }>,
-        async fetchText(url: string) {
-          http.calls.push({ url });
-          served += 1;
-          const route = served === 1 ? challenge : { status: 200, body: fixture("lantern") };
-          return { status: route.status, url, contentType: route.contentType ?? "application/json", body: route.body };
-        },
-      };
-      const result = await createCollinsSource(http).lookup("lantern", { collins: CREDENTIALS });
-      expect(result.status).toBe("found");
-      expect(http.calls).toHaveLength(2);
-    });
-
-    it("should give up once the retries are spent and say the refusal clears on its own", async () => {
+    // Retrying is the reader's to trigger now, so the message has to offer it and the lookup must not spend
+    // a second call on its own; the curl client this source runs on is what makes one attempt enough.
+    it("should charge one call for a turned-away request and tell the reader to try again", async () => {
       const http = answering("lantern", {
         status: 403,
         body: CHALLENGE_PAGE,
@@ -307,14 +291,13 @@ describe("createCollinsSource", () => {
       });
       const source = createCollinsSource(http);
       const result = await source.lookup("lantern", { collins: CREDENTIALS });
-      // One first attempt plus the retries, so a reader never waits on an unbounded run of them.
-      expect(http.calls).toHaveLength(3);
+      expect(http.calls).toHaveLength(1);
       expect(result).toMatchObject({ status: "unavailable", reason: "blocked" });
       if (result.status !== "unavailable") throw new Error("expected unavailable");
-      expect(result.message).toContain("try again");
+      expect(result.message).toContain("Try again");
     });
 
-    it("should not retry a key Collins itself turned down", async () => {
+    it("should charge one call for a key Collins itself turned down", async () => {
       const http = answering("lantern", {
         status: 403,
         body: '{"errorCode":403,"errorMessage":"Forbidden"}',

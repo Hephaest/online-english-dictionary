@@ -110,7 +110,8 @@ export function EntryScreen({ initialWord, initialSourceId, substitutedFrom, onL
   }, [result]);
 
   useEffect(() => {
-    if (problem?.status !== "unavailable" || problem.reason !== "network") return;
+    // A blocked request is worth retrying too: the host turns clients away intermittently, so the next one often lands.
+    if (problem?.status !== "unavailable" || (problem.reason !== "network" && problem.reason !== "blocked")) return;
     const next = neighborSource(sources, source.id, 1);
     showToast({
       style: Toast.Style.Failure,

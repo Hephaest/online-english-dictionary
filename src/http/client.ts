@@ -9,6 +9,9 @@ export const USER_AGENT = "OnlineEnglishDictionary/1.0";
 /** Owner-set constant: a hung page must not leave the list loading forever. */
 export const REQUEST_TIMEOUT_MS = 10_000;
 
+/** The Accept a page request sends unless its caller names another; shared so the curl client asks for the same. */
+export const DEFAULT_TEXT_ACCEPT = "text/html,application/json;q=0.9,*/*;q=0.8";
+
 export interface TextResponse {
   status: number;
   /** Final URL after redirects; sources such as Cambridge redirect a miss to their index page. */
@@ -96,12 +99,7 @@ async function request<Payload>(
 }
 
 export async function fetchText(url: string, headers?: Record<string, string>): Promise<TextResponse> {
-  const { payload, ...rest } = await request(
-    url,
-    "text/html,application/json;q=0.9,*/*;q=0.8",
-    (response) => response.text(),
-    headers,
-  );
+  const { payload, ...rest } = await request(url, DEFAULT_TEXT_ACCEPT, (response) => response.text(), headers);
   return { ...rest, body: payload };
 }
 

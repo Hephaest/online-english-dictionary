@@ -2,8 +2,9 @@ import * as cheerio from "cheerio";
 import type { Cheerio, CheerioAPI } from "cheerio";
 import type { Element } from "domhandler";
 import { z } from "zod";
-import { httpClient, NetworkError } from "../http/client";
+import { NetworkError } from "../http/client";
 import type { HttpClient } from "../http/client";
+import { curlClient } from "../http/curl-client";
 import type {
   AccentVariant,
   Badge,
@@ -32,14 +33,7 @@ const MISSING_KEY_MESSAGE =
 const REJECTED_KEY_MESSAGE =
   "Collins refused the key. Check the Collins API Key preference, and make sure the Collins Dictionary preference names a dictionary the key is subscribed to.";
 const BOT_WALL_MESSAGE =
-  "The Collins API host turned this request away before it reached Collins, so the key is not at fault. It happens in bursts and clears on its own, so try again.";
-
-/**
- * Owner-set constant: the pause before each further attempt when the host turns a request away.
- * Measured against the live API, the first request after a quiet spell is the one refused and the next
- * is usually let through, so two extra attempts clear nearly all of them while adding at most two seconds.
- */
-const CHALLENGE_RETRY_DELAYS_MS = [700, 1500];
+  "The Collins API host turned this request away before it reached Collins, so the key is not at fault. Try again.";
 
 /** The browsable page each API dictionary is published on, so "Open in Collins" opens the dictionary that was read. */
 // TODO(collins-american-path): Collins publishes one Cobuild section and no separate Advanced American path could be confirmed, so both Cobuild codes point at it.
@@ -114,15 +108,6 @@ function cleanText(element: Cheerio<Element>): string {
  */
 function isBotWall(contentType: string): boolean {
   return !contentType.toLowerCase().includes("json");
-}
-
-/** The host refused the request instead of passing it to Collins, which is worth one more attempt. */
-function turnedAway(response: { status: number; contentType: string }): boolean {
-  return (response.status === 401 || response.status === 403) && isBotWall(response.contentType);
-}
-
-function delay(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 /** Collins' own words about a failure, shown only when the body is the documented shape and reads as one short line. */
@@ -286,7 +271,7 @@ function unavailable(reason: UnavailableReason, message: string): LookupResult {
  * The Collins Dictionary adapter, reading the entryContent markup the JSON search endpoints wrap.
  * Collins bills above a monthly call limit and forbids caching, so every lookup is charged and none is stored.
  */
-export function createCollinsSource(http: Pick<HttpClient, "fetchText"> = httpClient): DictionarySource {
+export function createCollinsSource(http: Pick<HttpClient, "fetchText"> = curlClient): DictionarySource {
   // The entryUrl Collins returns points at the API itself, over http, so the browsable page is built here instead.
   // Collins spells a multi-word entry with hyphens, so "soup kitchen" must not become "soup%20kitchen".
   // The source is built before any key is read, so a link made outside a lookup falls back to the preference default.
@@ -298,27 +283,12 @@ export function createCollinsSource(http: Pick<HttpClient, "fetchText"> = httpCl
     return { accessKey: credentials.apiKey, Accept: "application/json" };
   }
 
-  /**
-   * One retry when the host turns the request away rather than Collins answering it.
-   * A turned-away request never reaches Collins, so retrying costs nothing against the monthly allowance,
-   * and the refusal comes in bursts that clear within a second.
-   */
-  async function fetchWithRetry(url: string, credentials: CollinsCredentials) {
-    let response = await http.fetchText(url, headersFor(credentials));
-    for (const pause of CHALLENGE_RETRY_DELAYS_MS) {
-      if (!turnedAway(response)) break;
-      await delay(pause);
-      response = await http.fetchText(url, headersFor(credentials));
-    }
-    return response;
-  }
-
   async function suggestionsFor(word: string, credentials: CollinsCredentials): Promise<string[]> {
     const url =
       `${API_BASE}/${credentials.dictionary}/search/didyoumean` +
       `?q=${encodeURIComponent(normalizeWord(word))}&entrynumber=${SUGGESTION_COUNT}`;
     try {
-      const response = await fetchWithRetry(url, credentials);
+      const response = await http.fetchText(url, headersFor(credentials));
       if (response.status !== 200) return [];
       return parseJson(suggestionsSchema, response.body)?.suggestions ?? [];
     } catch {
@@ -335,7 +305,7 @@ export function createCollinsSource(http: Pick<HttpClient, "fetchText"> = httpCl
       `?q=${encodeURIComponent(normalizeWord(word))}&format=html`;
     let response;
     try {
-      response = await fetchWithRetry(url, credentials);
+      response = await http.fetchText(url, headersFor(credentials));
     } catch (error) {
       if (error instanceof NetworkError) {
         return unavailable("network", error.timedOut ? "Collins timed out." : "Could not reach Collins.");
