@@ -161,5 +161,8 @@
     "publish": "npx @raycast/api@latest publish",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.22.2"
   }
 }
