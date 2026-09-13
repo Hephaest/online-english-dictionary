@@ -299,11 +299,16 @@ describe("createCollinsSource", () => {
       expect(http.calls).toHaveLength(2);
     });
 
-    it("should give up after the retry when the host turns both requests away", async () => {
-      const source = createCollinsSource(
-        answering("lantern", { status: 403, body: CHALLENGE_PAGE, contentType: "text/html; charset=UTF-8" }),
-      );
+    it("should give up once the retries are spent and say the refusal clears on its own", async () => {
+      const http = answering("lantern", {
+        status: 403,
+        body: CHALLENGE_PAGE,
+        contentType: "text/html; charset=UTF-8",
+      });
+      const source = createCollinsSource(http);
       const result = await source.lookup("lantern", { collins: CREDENTIALS });
+      // One first attempt plus the retries, so a reader never waits on an unbounded run of them.
+      expect(http.calls).toHaveLength(3);
       expect(result).toMatchObject({ status: "unavailable", reason: "blocked" });
       if (result.status !== "unavailable") throw new Error("expected unavailable");
       expect(result.message).toContain("try again");

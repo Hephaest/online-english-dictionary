@@ -34,10 +34,12 @@ const REJECTED_KEY_MESSAGE =
 const BOT_WALL_MESSAGE =
   "The Collins API host turned this request away before it reached Collins, so the key is not at fault. It happens in bursts and clears on its own, so try again.";
 
-/** Owner-set constant: one extra attempt, because a turned-away request clears on its own more often than not. */
-const CHALLENGE_RETRIES = 1;
-/** Owner-set constant: long enough for the host to let the next request through, short enough to still feel like a lookup. */
-const CHALLENGE_RETRY_DELAY_MS = 700;
+/**
+ * Owner-set constant: the pause before each further attempt when the host turns a request away.
+ * Measured against the live API, the first request after a quiet spell is the one refused and the next
+ * is usually let through, so two extra attempts clear nearly all of them while adding at most two seconds.
+ */
+const CHALLENGE_RETRY_DELAYS_MS = [700, 1500];
 
 /** The browsable page each API dictionary is published on, so "Open in Collins" opens the dictionary that was read. */
 // TODO(collins-american-path): Collins publishes one Cobuild section and no separate Advanced American path could be confirmed, so both Cobuild codes point at it.
@@ -303,9 +305,9 @@ export function createCollinsSource(http: Pick<HttpClient, "fetchText"> = httpCl
    */
   async function fetchWithRetry(url: string, credentials: CollinsCredentials) {
     let response = await http.fetchText(url, headersFor(credentials));
-    for (let attempt = 0; attempt < CHALLENGE_RETRIES; attempt += 1) {
+    for (const pause of CHALLENGE_RETRY_DELAYS_MS) {
       if (!turnedAway(response)) break;
-      await delay(CHALLENGE_RETRY_DELAY_MS);
+      await delay(pause);
       response = await http.fetchText(url, headersFor(credentials));
     }
     return response;
