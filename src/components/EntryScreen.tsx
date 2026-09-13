@@ -49,11 +49,11 @@ export function EntryScreen({ initialWord, initialSourceId, substitutedFrom, onL
   const source = resolveSource(sources, sourceId, preferences.defaultSource);
   const [word, setWord] = useState(initialWord);
   const [substitution, setSubstitution] = useState(substitutedFrom);
-  const { result, resultSourceId, resultWord, isLoading, refresh } = useLookup(
-    source,
-    word,
-    preferences.merriamWebster,
+  const lookupOptions = useMemo(
+    () => ({ merriamWebster: preferences.merriamWebster, collins: preferences.collins }),
+    [preferences],
   );
+  const { result, resultSourceId, resultWord, isLoading, refresh } = useLookup(source, word, lookupOptions);
   const [selectedItemId, setSelectedItemId] = useState<string>();
   const selectedRow = useRef<{ id: string; partOfSpeech: string | undefined } | undefined>(undefined);
   const rememberedKey = useRef<string | undefined>(undefined);

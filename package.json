@@ -2,7 +2,7 @@
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "online-english-dictionary",
   "title": "Online English Dictionary",
-  "description": "Look up English words in Cambridge, Longman, Oxford Learner's, Merriam-Webster, and Urban Dictionary, with US and UK pronunciation.",
+  "description": "Look up English words in Cambridge, Longman, Oxford Learner's, Collins, Merriam-Webster, and Urban Dictionary, with US and UK pronunciation.",
   "icon": "icon.png",
   "author": "philly_cai",
   "platforms": [
@@ -56,6 +56,10 @@
           "value": "oxford-learners"
         },
         {
+          "title": "Collins Dictionary",
+          "value": "collins"
+        },
+        {
           "title": "Merriam-Webster",
           "value": "merriam-webster"
         },
@@ -88,6 +92,36 @@
         {
           "title": "Collegiate Dictionary",
           "value": "collegiate"
+        }
+      ]
+    },
+    {
+      "name": "collinsApiKey",
+      "title": "Collins API Key",
+      "description": "Key supplied by Collins for api.collinsdictionary.com. Leave empty to hide Collins.",
+      "type": "password",
+      "required": false,
+      "placeholder": "Paste your key"
+    },
+    {
+      "name": "collinsDictionary",
+      "title": "Collins Dictionary",
+      "description": "The Collins dictionary your key is subscribed to.",
+      "type": "dropdown",
+      "required": false,
+      "default": "english",
+      "data": [
+        {
+          "title": "Collins English Dictionary",
+          "value": "english"
+        },
+        {
+          "title": "Collins Cobuild Advanced British",
+          "value": "english-learner"
+        },
+        {
+          "title": "Collins Cobuild Advanced American",
+          "value": "american-learner"
         }
       ]
     },

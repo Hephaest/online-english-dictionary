@@ -83,6 +83,20 @@ describe("senseMarkdown", () => {
     expect(markdown.split("\n")[2]).toBe("*Looked up “kitchen” from your selection.*");
     expect(markdown).not.toContain("raycast-width");
   });
+
+  it("should print the source's attribution as the closing line when the entry carries one", () => {
+    const attributed: Entry = { ...entry, attribution: "Collins English Dictionary. Copyright HarperCollins." };
+    const markdown = senseMarkdown(attributed, section, section.senses[0]);
+    const lines = markdown.split("\n");
+    expect(lines[lines.length - 1]).toBe("*Collins English Dictionary. Copyright HarperCollins.*");
+  });
+
+  it("should print no attribution line when the entry does not carry one", () => {
+    const markdown = senseMarkdown(entry, section, section.senses[0]);
+    const lastLine = markdown.split("\n").at(-1);
+    // the attribution guard in markdown.ts skips this push when there is no attribution to show.
+    expect(lastLine).toBe("> a fully fitted kitchen");
+  });
 });
 
 describe("senseClipboardText", () => {
@@ -90,5 +104,19 @@ describe("senseClipboardText", () => {
     expect(senseClipboardText(entry, section, section.senses[0])).toBe(
       "kitchen · noun\na room in which meals are cooked or prepared\n  - We ate at the kitchen table.\n  - a fully fitted kitchen",
     );
+  });
+
+  it("should append the source's attribution on its own line when the entry carries one", () => {
+    const attributed: Entry = { ...entry, attribution: "Collins English Dictionary. Copyright HarperCollins." };
+    expect(senseClipboardText(attributed, section, section.senses[0])).toBe(
+      "kitchen · noun\na room in which meals are cooked or prepared\n  - We ate at the kitchen table.\n  - a fully fitted kitchen\nCollins English Dictionary. Copyright HarperCollins.",
+    );
+  });
+
+  it("should append no attribution line when the entry does not carry one", () => {
+    const text = senseClipboardText(entry, section, section.senses[0]);
+    const lastLine = text.split("\n").at(-1);
+    // the attribution guard in markdown.ts skips this push when there is no attribution to show.
+    expect(lastLine).toBe("  - a fully fitted kitchen");
   });
 });

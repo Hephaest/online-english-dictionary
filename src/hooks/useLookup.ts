@@ -2,7 +2,7 @@ import { usePromise } from "@raycast/utils";
 import { NetworkError } from "../http/client";
 import { lookupRunner, normalizeWord } from "../lookup";
 import type { LookupResult, SourceId } from "../model/entry";
-import type { DictionarySource, MerriamWebsterCredentials } from "../sources/types";
+import type { DictionarySource, LookupOptions } from "../sources/types";
 
 export interface LookupState {
   result: LookupResult | undefined;
@@ -35,17 +35,13 @@ function resultFromError(error: unknown): LookupResult {
  * No abort signal is passed on purpose: React StrictMode mounts twice in development, and the second mount joins
  * the first request, so a signal owned by either mount would fail the other. Stale results are dropped by usePromise.
  */
-export function useLookup(
-  source: DictionarySource | undefined,
-  word: string,
-  merriamWebster: MerriamWebsterCredentials | undefined,
-): LookupState {
+export function useLookup(source: DictionarySource | undefined, word: string, options: LookupOptions): LookupState {
   const normalized = normalizeWord(word);
   const { data, isLoading, revalidate } = usePromise(
     async (sourceId: SourceId | undefined, lookupWord: string): Promise<Loaded | undefined> => {
       if (!source || source.id !== sourceId || !lookupWord) return undefined;
       try {
-        const result = await lookupRunner.lookup(source, lookupWord, { merriamWebster });
+        const result = await lookupRunner.lookup(source, lookupWord, options);
         return { sourceId, word: lookupWord, result };
       } catch (error) {
         return { sourceId, word: lookupWord, result: resultFromError(error) };

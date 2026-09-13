@@ -7,8 +7,16 @@ export interface MerriamWebsterCredentials {
   reference: MerriamWebsterReference;
 }
 
+export type CollinsDictionary = "english" | "english-learner" | "american-learner";
+
+export interface CollinsCredentials {
+  apiKey: string;
+  dictionary: CollinsDictionary;
+}
+
 export interface LookupOptions {
   merriamWebster?: MerriamWebsterCredentials;
+  collins?: CollinsCredentials;
 }
 
 export interface DictionarySource {
@@ -19,7 +27,9 @@ export interface DictionarySource {
   shortTitle: string;
   homepage: string;
   /** Set when the source cannot work without a user-supplied key. */
-  requiresApiKey?: "merriamWebster";
+  requiresApiKey?: "merriamWebster" | "collins";
+  /** Collins' terms forbid any storage that prevents a request being made, so its results are never cached. */
+  cachingForbidden?: true;
   entryUrl(word: string): string;
   lookup(word: string, options: LookupOptions): Promise<LookupResult>;
 }

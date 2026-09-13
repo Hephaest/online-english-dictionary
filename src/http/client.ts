@@ -55,7 +55,7 @@ export class NetworkError extends Error {
 }
 
 export type HttpClient = {
-  fetchText(url: string): Promise<TextResponse>;
+  fetchText(url: string, headers?: Record<string, string>): Promise<TextResponse>;
   fetchBytes(url: string): Promise<BytesResponse>;
 };
 
@@ -74,10 +74,12 @@ async function request<Payload>(
   url: string,
   accept: string,
   read: (response: Response) => Promise<Payload>,
+  headers?: Record<string, string>,
 ): Promise<Completed<Payload>> {
   try {
     const response = await fetch(url, {
-      headers: { "User-Agent": USER_AGENT, Accept: accept },
+      // The default Accept is first so a caller can override it; User-Agent is last so it can never be clobbered.
+      headers: { Accept: accept, ...headers, "User-Agent": USER_AGENT },
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       redirect: "follow",
     });
@@ -93,9 +95,12 @@ async function request<Payload>(
   }
 }
 
-export async function fetchText(url: string): Promise<TextResponse> {
-  const { payload, ...rest } = await request(url, "text/html,application/json;q=0.9,*/*;q=0.8", (response) =>
-    response.text(),
+export async function fetchText(url: string, headers?: Record<string, string>): Promise<TextResponse> {
+  const { payload, ...rest } = await request(
+    url,
+    "text/html,application/json;q=0.9,*/*;q=0.8",
+    (response) => response.text(),
+    headers,
   );
   return { ...rest, body: payload };
 }

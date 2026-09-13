@@ -4,7 +4,10 @@ import type { LookupResult } from "./model/entry";
 import type { DictionarySource } from "./sources/types";
 
 /** A source that answers from the queue in order; an Error in the queue is thrown instead of returned. */
-function sourceReturning(results: Array<LookupResult | Error>): { source: DictionarySource; calls: string[] } {
+function sourceReturning(
+  results: Array<LookupResult | Error>,
+  overrides: Partial<DictionarySource> = {},
+): { source: DictionarySource; calls: string[] } {
   const calls: string[] = [];
   const queue = [...results];
   const source: DictionarySource = {
@@ -19,6 +22,7 @@ function sourceReturning(results: Array<LookupResult | Error>): { source: Dictio
       if (next instanceof Error) throw next;
       return next;
     },
+    ...overrides,
   };
   return { source, calls };
 }
@@ -80,5 +84,20 @@ describe("createLookupRunner", () => {
     runner.forget("oxford-learners", "kitchen");
     await runner.lookup(source, "kitchen", {});
     expect(calls).toHaveLength(2);
+  });
+
+  it("should issue a second network request for a repeat lookup on a source with caching forbidden", async () => {
+    const { source, calls } = sourceReturning([found, found], { cachingForbidden: true });
+    const runner = createLookupRunner();
+    await runner.lookup(source, "kitchen", {});
+    await runner.lookup(source, "kitchen", {});
+    expect(calls).toHaveLength(2);
+  });
+
+  it("should still share one request between simultaneous callers when caching is forbidden", async () => {
+    const { source, calls } = sourceReturning([found], { cachingForbidden: true });
+    const runner = createLookupRunner();
+    await Promise.all([runner.lookup(source, "kitchen", {}), runner.lookup(source, "kitchen", {})]);
+    expect(calls).toHaveLength(1);
   });
 });

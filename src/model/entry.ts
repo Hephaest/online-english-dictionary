@@ -2,7 +2,7 @@
  * Identifiers of the dictionaries the extension can read.
  * The one list every other list is derived from, so adding a dictionary here reaches all of them at once.
  */
-export const SOURCE_IDS = ["cambridge", "longman", "oxford-learners", "merriam-webster", "urban"] as const;
+export const SOURCE_IDS = ["cambridge", "longman", "oxford-learners", "collins", "merriam-webster", "urban"] as const;
 
 export type SourceId = (typeof SOURCE_IDS)[number];
 
@@ -73,6 +73,8 @@ export interface Entry {
   /** Page the user can open in the browser. */
   url: string;
   sections: EntrySection[];
+  /** Copyright line a source's licence requires to be shown, set only by sources that require one. */
+  attribution?: string;
 }
 
 export type UnavailableReason = "missing-key" | "rejected-key" | "network" | "blocked" | "format-changed";

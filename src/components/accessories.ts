@@ -8,6 +8,7 @@ const SOURCE_COLORS: Record<SourceId, Color> = {
   cambridge: Color.Blue,
   longman: Color.Orange,
   "oxford-learners": Color.Purple,
+  collins: Color.SecondaryText,
   "merriam-webster": Color.Magenta,
   urban: Color.Green,
 };

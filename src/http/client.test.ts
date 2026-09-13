@@ -41,6 +41,33 @@ describe("fetchText", () => {
     expect((init.headers as Record<string, string>)["User-Agent"]).toBe(USER_AGENT);
   });
 
+  it("should send a caller's own headers alongside the product User-Agent", async () => {
+    const fetchMock = vi.fn(async () => responseWith({ status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchText("https://example.test/word", { accessKey: "a-key" });
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const headers = init.headers as Record<string, string>;
+    expect(headers.accessKey).toBe("a-key");
+    expect(headers["User-Agent"]).toBe(USER_AGENT);
+  });
+
+  // An API that answers only to its own Accept would otherwise be handed the HTML-first default and never see it.
+  it("should let a caller replace the default Accept header", async () => {
+    const fetchMock = vi.fn(async () => responseWith({ status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchText("https://example.test/word", { Accept: "application/json" });
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect((init.headers as Record<string, string>).Accept).toBe("application/json");
+  });
+
+  it("should never let a caller replace the product User-Agent", async () => {
+    const fetchMock = vi.fn(async () => responseWith({ status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchText("https://example.test/word", { "User-Agent": "something-else" });
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect((init.headers as Record<string, string>)["User-Agent"]).toBe(USER_AGENT);
+  });
+
   it("should turn a timeout that fires while the body is still streaming into a NetworkError", async () => {
     vi.stubGlobal(
       "fetch",

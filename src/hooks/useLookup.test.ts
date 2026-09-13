@@ -4,7 +4,7 @@ import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { StrictMode, useEffect } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { LookupResult, SourceId } from "../model/entry";
-import type { DictionarySource, LookupOptions } from "../sources/types";
+import type { CollinsCredentials, DictionarySource, LookupOptions } from "../sources/types";
 import { lookupRunner } from "../lookup";
 import { useLookup } from "./useLookup";
 
@@ -18,6 +18,7 @@ function foundEntry(id: SourceId, word: string): LookupResult {
  */
 function deferredSource(id: SourceId) {
   const calls: string[] = [];
+  const optionsPerCall: LookupOptions[] = [];
   let answer: ((result: LookupResult) => void) | undefined;
   const source: DictionarySource = {
     id,
@@ -27,6 +28,7 @@ function deferredSource(id: SourceId) {
     entryUrl: (word) => `https://example.test/${word}`,
     lookup(word, options: LookupOptions & { signal?: AbortSignal }) {
       calls.push(word);
+      optionsPerCall.push(options);
       return new Promise<LookupResult>((resolve) => {
         answer = resolve;
         options.signal?.addEventListener("abort", () =>
@@ -35,7 +37,7 @@ function deferredSource(id: SourceId) {
       });
     },
   };
-  return { source, calls, answer: (result: LookupResult) => answer?.(result) };
+  return { source, calls, optionsPerCall, answer: (result: LookupResult) => answer?.(result) };
 }
 
 /** Counts how many times React mounted the calling component, which is two under StrictMode in development. */
@@ -55,7 +57,7 @@ describe("useLookup", () => {
 
   it("should resolve the entry once the source answers", async () => {
     const { source, answer } = deferredSource("cambridge");
-    const { result } = renderHook(() => useLookup(source, "kitchen", undefined));
+    const { result } = renderHook(() => useLookup(source, "kitchen", {}));
     expect(result.current.isLoading).toBe(true);
     expect(result.current.result).toBeUndefined();
 
@@ -75,7 +77,7 @@ describe("useLookup", () => {
     const { result } = renderHook(
       () => {
         useMountCount(mounts);
-        return useLookup(source, "serendipity", undefined);
+        return useLookup(source, "serendipity", {});
       },
       { wrapper: StrictMode },
     );
@@ -86,5 +88,16 @@ describe("useLookup", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.result).toEqual(foundEntry("longman", "serendipity"));
     expect(calls).toEqual(["serendipity"]);
+  });
+
+  it("should hand the source every credential it was given", async () => {
+    const collins: CollinsCredentials = { apiKey: "k", dictionary: "english" };
+    const { source, optionsPerCall, answer } = deferredSource("cambridge");
+    const { result } = renderHook(() => useLookup(source, "kitchen", { collins }));
+
+    answer(foundEntry("cambridge", "kitchen"));
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(optionsPerCall).toEqual([{ collins }]);
   });
 });

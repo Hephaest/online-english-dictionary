@@ -72,6 +72,7 @@ export function senseMarkdown(
   const examples = exampleLines(sense);
   if (examples.length > 0) lines.push(...examples, "");
   if (sense.note) lines.push(`*${escapeMarkdown(sense.note)}*`, "");
+  if (entry.attribution) lines.push(`*${escapeMarkdown(entry.attribution)}*`, "");
   return lines.join("\n").trimEnd();
 }
 
@@ -79,5 +80,8 @@ export function senseMarkdown(
 export function senseClipboardText(entry: Entry, section: EntrySection, sense: Sense): string {
   const heading = [entry.headword, section.partOfSpeech].filter(Boolean).join(" · ");
   const examples = sense.examples.map((example) => `  - ${example}`);
-  return [heading, sense.definition, ...examples].join("\n");
+  const lines = [heading, sense.definition, ...examples];
+  // A source's licence can require its copyright line to travel with the text wherever it is copied.
+  if (entry.attribution) lines.push(entry.attribution);
+  return lines.join("\n");
 }

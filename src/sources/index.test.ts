@@ -1,17 +1,29 @@
 import { describe, expect, it } from "vitest";
 import { allSources, availableSources, neighborSource, oedSearchUrl, resolveSource } from "./index";
+import type { CollinsCredentials, MerriamWebsterCredentials } from "./types";
+
+const merriamWebsterKey: MerriamWebsterCredentials = { apiKey: "k", reference: "collegiate" };
+const collinsKey: CollinsCredentials = { apiKey: "k", dictionary: "english" };
 
 describe("availableSources", () => {
-  it("should hide Merriam-Webster until a key is configured", () => {
-    const ids = availableSources({ merriamWebster: undefined }).map((source) => source.id);
+  it("should hide both keyed sources while neither key is configured", () => {
+    const ids = availableSources({}).map((source) => source.id);
     expect(ids).toEqual(["cambridge", "longman", "oxford-learners", "urban"]);
   });
 
-  it("should list every source in dropdown order once a key is configured", () => {
-    const ids = availableSources({ merriamWebster: { apiKey: "k", reference: "collegiate" } }).map(
-      (source) => source.id,
-    );
+  it("should show Collins alone while only its key is configured", () => {
+    const ids = availableSources({ collins: collinsKey }).map((source) => source.id);
+    expect(ids).toEqual(["cambridge", "longman", "oxford-learners", "collins", "urban"]);
+  });
+
+  it("should show Merriam-Webster alone while only its key is configured", () => {
+    const ids = availableSources({ merriamWebster: merriamWebsterKey }).map((source) => source.id);
     expect(ids).toEqual(["cambridge", "longman", "oxford-learners", "merriam-webster", "urban"]);
+  });
+
+  it("should list every source in dropdown order once both keys are configured", () => {
+    const ids = availableSources({ merriamWebster: merriamWebsterKey, collins: collinsKey }).map((source) => source.id);
+    expect(ids).toEqual(["cambridge", "longman", "oxford-learners", "collins", "merriam-webster", "urban"]);
   });
 });
 

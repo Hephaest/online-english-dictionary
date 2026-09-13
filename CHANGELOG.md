@@ -1,5 +1,9 @@
 # Online English Dictionary Changelog
 
+## [Collins Dictionary] - {PR_MERGE_DATE}
+
+- Search Collins Dictionary alongside the others, with a choice of the Collins English Dictionary, Collins Cobuild Advanced British, or Collins Cobuild Advanced American once a key is entered.
+
 ## [Initial Version] - {PR_MERGE_DATE}
 
 - Search a word in Cambridge, Longman, Oxford Learner's, Merriam-Webster, or Urban Dictionary from one window, and switch between them with ⌘P.

@@ -15,3 +15,9 @@ compiled_raycast_rust
 
 # misc
 .DS_Store
+
+# local tooling output
+.playwright-cli/
+
+# HarperCollins' licensed API documentation: never publish it from this public repository
+API Developer Documentation 0.4.pdf

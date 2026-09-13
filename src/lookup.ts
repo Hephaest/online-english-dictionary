@@ -31,15 +31,20 @@ export function createLookupRunner(): LookupRunner {
 
   async function lookup(source: DictionarySource, word: string, options: LookupOptions): Promise<LookupResult> {
     const key = lookupKey(source.id, word);
-    const cached = results.get(key);
-    if (cached) return cached;
+    // Collins' terms forbid storage that prevents a request being made, so its results never enter this map.
+    if (!source.cachingForbidden) {
+      const cached = results.get(key);
+      if (cached) return cached;
+    }
+    // Joining an in-flight request coalesces simultaneous callers into one network call rather than avoiding a
+    // call outright, so this stays even for a source with caching forbidden.
     const pending = inFlight.get(key);
     if (pending) return pending;
     const request = source
       .lookup(normalizeWord(word), options)
       .then((result) => {
         // Failures are not cached, so Retry and source cycling reach the network again once the request has settled.
-        if (result.status !== "unavailable") results.set(key, result);
+        if (!source.cachingForbidden && result.status !== "unavailable") results.set(key, result);
         return result;
       })
       .finally(() => inFlight.delete(key));

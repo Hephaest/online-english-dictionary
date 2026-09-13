@@ -1,27 +1,26 @@
 import type { SourceId } from "../model/entry";
 import type { AppPreferences } from "../preferences";
 import { createCambridgeSource } from "./cambridge";
+import { createCollinsSource } from "./collins";
 import { createLongmanSource } from "./longman";
 import { createMerriamWebsterSource } from "./merriam-webster";
 import { createOxfordLearnersSource } from "./oxford-learners";
 import { createUrbanDictionarySource } from "./urban";
 import type { DictionarySource } from "./types";
 
-// TODO(collins): add the Collins adapter once the API key application is approved (entryContent HTML in JSON, two calls per lookup, caching forbidden, fixed attribution string).
 /** Dropdown order. */
 export const allSources: DictionarySource[] = [
   createCambridgeSource(),
   createLongmanSource(),
   createOxfordLearnersSource(),
+  createCollinsSource(),
   createMerriamWebsterSource(),
   createUrbanDictionarySource(),
 ];
 
 /** Sources the user can use right now: a source that needs a key is hidden until the key is entered. */
-export function availableSources(preferences: Pick<AppPreferences, "merriamWebster">): DictionarySource[] {
-  return allSources.filter(
-    (source) => source.requiresApiKey !== "merriamWebster" || Boolean(preferences.merriamWebster),
-  );
+export function availableSources(preferences: Pick<AppPreferences, "merriamWebster" | "collins">): DictionarySource[] {
+  return allSources.filter((source) => !source.requiresApiKey || Boolean(preferences[source.requiresApiKey]));
 }
 
 export function findSource(sources: DictionarySource[], id: SourceId | undefined): DictionarySource | undefined {
