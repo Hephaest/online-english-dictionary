@@ -10,6 +10,8 @@ import type { CollinsCredentials, CollinsDictionary } from "./types";
 const API = "https://api.collinsdictionary.com/api/v1/dictionaries";
 const ATTRIBUTION = "www.collinsdictionary.com © HarperCollins Publishers Ltd 2025";
 const CREDENTIALS: CollinsCredentials = { apiKey: "test-key", dictionary: "english-learner" };
+/** What the host in front of the Collins API answers a client it does not read as a browser. */
+const CHALLENGE_PAGE = "<!DOCTYPE html><html><head><title>Just a moment...</title></head><body></body></html>";
 const ENGLISH_CREDENTIALS: CollinsCredentials = { ...CREDENTIALS, dictionary: "english" };
 
 function fixture(name: string): string {
@@ -260,6 +262,43 @@ describe("createCollinsSource", () => {
 
     it("should report a rejected key when Collins answers HTTP 403", async () => {
       const source = createCollinsSource(answering("lantern", { status: 403, body: "" }));
+      await expect(source.lookup("lantern", { collins: CREDENTIALS })).resolves.toMatchObject({
+        status: "unavailable",
+        reason: "rejected-key",
+      });
+    });
+
+    // The host in front of the API answers a non-browser client with an HTML challenge page under the same 403
+    // Collins uses for a bad key. Blaming the key would send the reader to change a setting that is already right.
+    it("should blame the host rather than the key when a 403 carries a challenge page", async () => {
+      const source = createCollinsSource(
+        answering("lantern", { status: 403, body: CHALLENGE_PAGE, contentType: "text/html; charset=UTF-8" }),
+      );
+      const result = await source.lookup("lantern", { collins: CREDENTIALS });
+      expect(result).toMatchObject({ status: "unavailable", reason: "blocked" });
+      if (result.status !== "unavailable") throw new Error("expected unavailable");
+      expect(result.message).not.toContain("Collins API Key");
+      expect(result.message).not.toContain("subscribed");
+    });
+
+    it("should blame the host rather than the key when a 401 carries a challenge page", async () => {
+      const source = createCollinsSource(
+        answering("lantern", { status: 401, body: CHALLENGE_PAGE, contentType: "text/html; charset=UTF-8" }),
+      );
+      await expect(source.lookup("lantern", { collins: CREDENTIALS })).resolves.toMatchObject({
+        status: "unavailable",
+        reason: "blocked",
+      });
+    });
+
+    it("should still blame the key when Collins itself answers 403 as JSON", async () => {
+      const source = createCollinsSource(
+        answering("lantern", {
+          status: 403,
+          body: '{"errorCode":403,"errorMessage":"Forbidden"}',
+          contentType: "application/json",
+        }),
+      );
       await expect(source.lookup("lantern", { collins: CREDENTIALS })).resolves.toMatchObject({
         status: "unavailable",
         reason: "rejected-key",

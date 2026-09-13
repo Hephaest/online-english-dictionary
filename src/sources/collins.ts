@@ -31,6 +31,8 @@ const MISSING_KEY_MESSAGE =
   "Collins needs a key from the Collins Dictionary API portal. Paste it into the Collins API Key preference.";
 const REJECTED_KEY_MESSAGE =
   "Collins refused the key. Check the Collins API Key preference, and make sure the Collins Dictionary preference names a dictionary the key is subscribed to.";
+const BOT_WALL_MESSAGE =
+  "The Collins API host turned the request away before it reached Collins, so the key is not at fault. Their host only answers browsers today, and Collins has to allow requests from an app before this can work.";
 
 /** The browsable page each API dictionary is published on, so "Open in Collins" opens the dictionary that was read. */
 // TODO(collins-american-path): Collins publishes one Cobuild section and no separate Advanced American path could be confirmed, so both Cobuild codes point at it.
@@ -95,6 +97,16 @@ function collapse(text: string): string {
 
 function cleanText(element: Cheerio<Element>): string {
   return collapse(element.text());
+}
+
+/**
+ * A bot wall in front of the API, rather than Collins turning the key down.
+ * Collins answers JSON to every request, so an HTML body under 401 or 403 never came from Collins at all:
+ * their host is fronted by a challenge page that refuses any client it does not read as a browser.
+ * Telling these apart matters because the two have opposite fixes, and only one of them is the reader's to make.
+ */
+function isBotWall(contentType: string): boolean {
+  return !contentType.toLowerCase().includes("json");
 }
 
 /** Collins' own words about a failure, shown only when the body is the documented shape and reads as one short line. */
@@ -300,7 +312,12 @@ export function createCollinsSource(http: Pick<HttpClient, "fetchText"> = httpCl
       throw error;
     }
 
-    if (response.status === 401 || response.status === 403) return unavailable("rejected-key", REJECTED_KEY_MESSAGE);
+    if (response.status === 401 || response.status === 403) {
+      // A challenge page shares the 403 Collins uses for a bad key, so blaming the key would send the reader to fix
+      // something that is not broken.
+      if (isBotWall(response.contentType)) return unavailable("blocked", BOT_WALL_MESSAGE);
+      return unavailable("rejected-key", REJECTED_KEY_MESSAGE);
+    }
     if (response.status === 429) {
       return unavailable("blocked", `Collins refused the request (HTTP ${response.status}).`);
     }
