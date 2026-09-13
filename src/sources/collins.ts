@@ -32,7 +32,12 @@ const MISSING_KEY_MESSAGE =
 const REJECTED_KEY_MESSAGE =
   "Collins refused the key. Check the Collins API Key preference, and make sure the Collins Dictionary preference names a dictionary the key is subscribed to.";
 const BOT_WALL_MESSAGE =
-  "The Collins API host turned the request away before it reached Collins, so the key is not at fault. Their host only answers browsers today, and Collins has to allow requests from an app before this can work.";
+  "The Collins API host turned this request away before it reached Collins, so the key is not at fault. It happens in bursts and clears on its own, so try again.";
+
+/** Owner-set constant: one extra attempt, because a turned-away request clears on its own more often than not. */
+const CHALLENGE_RETRIES = 1;
+/** Owner-set constant: long enough for the host to let the next request through, short enough to still feel like a lookup. */
+const CHALLENGE_RETRY_DELAY_MS = 700;
 
 /** The browsable page each API dictionary is published on, so "Open in Collins" opens the dictionary that was read. */
 // TODO(collins-american-path): Collins publishes one Cobuild section and no separate Advanced American path could be confirmed, so both Cobuild codes point at it.
@@ -107,6 +112,15 @@ function cleanText(element: Cheerio<Element>): string {
  */
 function isBotWall(contentType: string): boolean {
   return !contentType.toLowerCase().includes("json");
+}
+
+/** The host refused the request instead of passing it to Collins, which is worth one more attempt. */
+function turnedAway(response: { status: number; contentType: string }): boolean {
+  return (response.status === 401 || response.status === 403) && isBotWall(response.contentType);
+}
+
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 /** Collins' own words about a failure, shown only when the body is the documented shape and reads as one short line. */
@@ -282,12 +296,27 @@ export function createCollinsSource(http: Pick<HttpClient, "fetchText"> = httpCl
     return { accessKey: credentials.apiKey, Accept: "application/json" };
   }
 
+  /**
+   * One retry when the host turns the request away rather than Collins answering it.
+   * A turned-away request never reaches Collins, so retrying costs nothing against the monthly allowance,
+   * and the refusal comes in bursts that clear within a second.
+   */
+  async function fetchWithRetry(url: string, credentials: CollinsCredentials) {
+    let response = await http.fetchText(url, headersFor(credentials));
+    for (let attempt = 0; attempt < CHALLENGE_RETRIES; attempt += 1) {
+      if (!turnedAway(response)) break;
+      await delay(CHALLENGE_RETRY_DELAY_MS);
+      response = await http.fetchText(url, headersFor(credentials));
+    }
+    return response;
+  }
+
   async function suggestionsFor(word: string, credentials: CollinsCredentials): Promise<string[]> {
     const url =
-      `${API_BASE}/${credentials.dictionary}/search/didyoumean/` +
+      `${API_BASE}/${credentials.dictionary}/search/didyoumean` +
       `?q=${encodeURIComponent(normalizeWord(word))}&entrynumber=${SUGGESTION_COUNT}`;
     try {
-      const response = await http.fetchText(url, headersFor(credentials));
+      const response = await fetchWithRetry(url, credentials);
       if (response.status !== 200) return [];
       return parseJson(suggestionsSchema, response.body)?.suggestions ?? [];
     } catch {
@@ -300,11 +329,11 @@ export function createCollinsSource(http: Pick<HttpClient, "fetchText"> = httpCl
     if (!credentials) return unavailable("missing-key", MISSING_KEY_MESSAGE);
 
     const url =
-      `${API_BASE}/${credentials.dictionary}/search/first/` +
+      `${API_BASE}/${credentials.dictionary}/search/first` +
       `?q=${encodeURIComponent(normalizeWord(word))}&format=html`;
     let response;
     try {
-      response = await http.fetchText(url, headersFor(credentials));
+      response = await fetchWithRetry(url, credentials);
     } catch (error) {
       if (error instanceof NetworkError) {
         return unavailable("network", error.timedOut ? "Collins timed out." : "Could not reach Collins.");

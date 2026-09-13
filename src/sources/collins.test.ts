@@ -34,11 +34,11 @@ function httpServing(routes: Record<string, Route>) {
 }
 
 function searchUrl(word: string, dictionary: CollinsDictionary = CREDENTIALS.dictionary): string {
-  return `${API}/${dictionary}/search/first/?q=${encodeURIComponent(word)}&format=html`;
+  return `${API}/${dictionary}/search/first?q=${encodeURIComponent(word)}&format=html`;
 }
 
 function suggestUrl(word: string): string {
-  return `${API}/${CREDENTIALS.dictionary}/search/didyoumean/?q=${encodeURIComponent(word)}&entrynumber=5`;
+  return `${API}/${CREDENTIALS.dictionary}/search/didyoumean?q=${encodeURIComponent(word)}&entrynumber=5`;
 }
 
 function serving(word: string, name = word, credentials: CollinsCredentials = CREDENTIALS) {
@@ -279,6 +279,44 @@ describe("createCollinsSource", () => {
       if (result.status !== "unavailable") throw new Error("expected unavailable");
       expect(result.message).not.toContain("Collins API Key");
       expect(result.message).not.toContain("subscribed");
+    });
+
+    // The host turns requests away in bursts that clear within a second, so one retry rescues most lookups.
+    it("should retry once and succeed when the host turns the first request away", async () => {
+      const challenge: Route = { status: 403, body: CHALLENGE_PAGE, contentType: "text/html; charset=UTF-8" };
+      let served = 0;
+      const http = {
+        calls: [] as Array<{ url: string }>,
+        async fetchText(url: string) {
+          http.calls.push({ url });
+          served += 1;
+          const route = served === 1 ? challenge : { status: 200, body: fixture("lantern") };
+          return { status: route.status, url, contentType: route.contentType ?? "application/json", body: route.body };
+        },
+      };
+      const result = await createCollinsSource(http).lookup("lantern", { collins: CREDENTIALS });
+      expect(result.status).toBe("found");
+      expect(http.calls).toHaveLength(2);
+    });
+
+    it("should give up after the retry when the host turns both requests away", async () => {
+      const source = createCollinsSource(
+        answering("lantern", { status: 403, body: CHALLENGE_PAGE, contentType: "text/html; charset=UTF-8" }),
+      );
+      const result = await source.lookup("lantern", { collins: CREDENTIALS });
+      expect(result).toMatchObject({ status: "unavailable", reason: "blocked" });
+      if (result.status !== "unavailable") throw new Error("expected unavailable");
+      expect(result.message).toContain("try again");
+    });
+
+    it("should not retry a key Collins itself turned down", async () => {
+      const http = answering("lantern", {
+        status: 403,
+        body: '{"errorCode":403,"errorMessage":"Forbidden"}',
+        contentType: "application/json",
+      });
+      await createCollinsSource(http).lookup("lantern", { collins: CREDENTIALS });
+      expect(http.calls).toHaveLength(1);
     });
 
     it("should blame the host rather than the key when a 401 carries a challenge page", async () => {
